@@ -30,6 +30,7 @@ class TypologyResult:
     total_cost: float
     board_area_m2: float | None = None
     linear_m: float | None = None
+    consumables_cost: float = 0.0
 
 
 def _panel(name: str, width_mm: float, length_mm: float, qty: int) -> dict:
