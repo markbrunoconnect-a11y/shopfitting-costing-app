@@ -6,6 +6,7 @@ COPY backend/requirements.txt backend/requirements.txt
 RUN pip install --no-cache-dir -r backend/requirements.txt
 
 COPY backend/ backend/
+COPY Shopfitting_Master_Price_List_Merged.xlsx Shopfitting_Master_Price_List_Merged.xlsx
 
 WORKDIR /app/backend
 
