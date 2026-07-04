@@ -10,7 +10,12 @@
   body { font-family: -apple-system, Segoe UI, Arial, sans-serif; margin:0; background:var(--bg); color:#222; }
   header { display:flex; justify-content:space-between; align-items:center; padding:14px 24px; background:#fff; border-bottom:1px solid var(--border); }
   header .brand { font-weight:600; font-size:16px; }
-  nav a { margin-left:16px; cursor:pointer; color:var(--accent); text-decoration:none; font-size:14px; }
+  nav { display:flex; align-items:center; gap:10px; }
+  nav a { cursor:pointer; text-decoration:none; font-size:14px; font-weight:600; padding:8px 16px; border-radius:6px; border:1px solid transparent; }
+  nav a.nav-primary { color:#fff; background:var(--accent); }
+  nav a.nav-primary:hover { background:#1740ad; }
+  nav a.nav-logout { color:var(--danger); background:#fff; border-color:var(--danger); }
+  nav a.nav-logout:hover { background:var(--danger); color:#fff; }
   main { max-width:900px; margin:0 auto; padding:24px; }
   .hidden { display:none !important; }
   .card { background:#fff; border:1px solid var(--border); border-radius:8px; padding:18px 20px; margin-bottom:16px; }
@@ -44,8 +49,8 @@
   <div class="brand">Shopfitting Costing App</div>
   <nav id="nav" class="hidden">
     <a onclick="showDashboard()">Projects</a>
-    <a onclick="showMaterials()">Materials</a>
-    <a onclick="logout()">Log out</a>
+    <a class="nav-primary" onclick="showMaterials()">Materials</a>
+    <a class="nav-logout" onclick="logout()">Log out</a>
   </nav>
 </header>
 
