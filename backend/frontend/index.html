@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shopfitting Costing App</title>
+<style>
+  :root { --border:#d8d8d4; --muted:#6b6b66; --accent:#1d4ed8; --bg:#faf9f6; --danger:#b91c1c; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, Segoe UI, Arial, sans-serif; margin:0; background:var(--bg); color:#222; }
+  header { display:flex; justify-content:space-between; align-items:center; padding:14px 24px; background:#fff; border-bottom:1px solid var(--border); }
+  header .brand { font-weight:600; font-size:16px; }
+  nav a { margin-left:16px; cursor:pointer; color:var(--accent); text-decoration:none; font-size:14px; }
+  main { max-width:900px; margin:0 auto; padding:24px; }
+  .hidden { display:none !important; }
+  .card { background:#fff; border:1px solid var(--border); border-radius:8px; padding:18px 20px; margin-bottom:16px; }
+  .row { display:flex; justify-content:space-between; align-items:center; }
+  .list-row { display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border:1px solid var(--border); border-radius:6px; margin-bottom:8px; cursor:pointer; }
+  .list-row:hover { background:#f5f5f2; }
+  button { background:#111; color:#fff; border:none; padding:8px 14px; border-radius:6px; font-size:13px; cursor:pointer; }
+  button.secondary { background:#fff; color:#111; border:1px solid var(--border); }
+  button.danger { background:var(--danger); }
+  button:disabled { opacity:0.5; cursor:not-allowed; }
+  input, select, textarea { padding:7px 9px; border:1px solid var(--border); border-radius:5px; font-size:13px; width:100%; }
+  label { font-size:12px; color:var(--muted); display:block; margin:8px 0 3px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.45); display:flex; align-items:flex-start; justify-content:center; padding:40px 16px; overflow:auto; z-index:50; }
+  .modal { background:#fff; border-radius:10px; padding:22px 26px; width:100%; max-width:520px; }
+  .modal h2 { margin-top:0; font-size:16px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:8px 6px; border-bottom:1px solid var(--border); }
+  th { color:var(--muted); font-weight:500; }
+  .badge { display:inline-block; background:#eef2ff; color:var(--accent); font-size:11px; padding:2px 8px; border-radius:10px; }
+  .error { color:var(--danger); font-size:13px; margin:8px 0; }
+  .muted { color:var(--muted); font-size:13px; }
+  .component-chip { display:flex; justify-content:space-between; align-items:center; background:#f5f5f2; border:1px solid var(--border); border-radius:6px; padding:8px 10px; margin-bottom:6px; font-size:13px; }
+  .footer-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">Shopfitting Costing App</div>
+  <nav id="nav" class="hidden">
+    <a onclick="showDashboard()">Projects</a>
+    <a onclick="showMaterials()">Materials</a>
+    <a onclick="logout()">Log out</a>
+  </nav>
+</header>
+
+<main>
+
+  <!-- LOGIN / REGISTER -->
+  <div id="screen-auth" class="card" style="max-width:360px; margin:60px auto;">
+    <h2 id="auth-title">Log in</h2>
+    <div id="auth-error" class="error hidden"></div>
+    <label>Email</label>
+    <input id="auth-email" type="email" placeholder="you@company.com">
+    <div id="auth-name-field" class="hidden">
+      <label>Full name</label>
+      <input id="auth-name" type="text" placeholder="Your name">
+    </div>
+    <label>Password</label>
+    <input id="auth-password" type="password" placeholder="At least 8 characters">
+    <div class="footer-actions" style="justify-content:space-between; align-items:center;">
+      <a style="cursor:pointer; font-size:13px; color:var(--accent);" onclick="toggleAuthMode()" id="auth-toggle">Need an account? Register</a>
+      <button onclick="submitAuth()" id="auth-submit">Log in</button>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="screen-dashboard" class="hidden">
+    <div class="row" style="margin-bottom:14px;">
+      <h2>Projects</h2>
+      <button onclick="openModal('modal-new-project')">+ New project</button>
+    </div>
+    <div id="project-list"></div>
+  </div>
+
+  <!-- PROJECT DETAIL -->
+  <div id="screen-project" class="hidden">
+    <a style="cursor:pointer; color:var(--accent); font-size:13px;" onclick="showDashboard()">&larr; All projects</a>
+    <div class="row" style="margin:10px 0 4px;">
+      <h2 id="project-title"></h2>
+      <div style="display:flex; gap:8px;">
+        <button class="secondary" onclick="viewCostAnalysis()">Cost analysis</button>
+        <button onclick="openAddItem()">+ Add item to project</button>
+      </div>
+    </div>
+    <p id="project-meta" class="muted"></p>
+    <div id="item-list"></div>
+  </div>
+
+  <!-- MATERIALS -->
+  <div id="screen-materials" class="hidden">
+    <div class="row" style="margin-bottom:14px;">
+      <h2>Materials</h2>
+      <button onclick="openMaterialForm()">+ Add material</button>
+    </div>
+    <table>
+      <thead><tr><th>Category</th><th>Description</th><th>Cost (ZAR)</th><th>Dims (mm)</th><th></th></tr></thead>
+      <tbody id="materials-table"></tbody>
+    </table>
+  </div>
+
+</main>
+
+<!-- MODAL: New project -->
+<div id="modal-new-project" class="modal-overlay hidden">
+  <div class="modal">
+    <h2>New project</h2>
+    <div id="new-project-error" class="error hidden"></div>
+    <label>Project name</label><input id="np-name">
+    <div class="grid2">
+      <div><label>Project number</label><input id="np-number"></div>
+      <div><label>Sponsor</label><input id="np-sponsor"></div>
+    </div>
+    <label>Client info</label><textarea id="np-client" rows="2"></textarea>
+    <label>Special instructions</label><textarea id="np-instructions" rows="2"></textarea>
+    <div class="footer-actions">
+      <button class="secondary" onclick="closeModal('modal-new-project')">Cancel</button>
+      <button onclick="submitNewProject()">Create project</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Add item -->
+<div id="modal-add-item" class="modal-overlay hidden">
+  <div class="modal" style="max-width:560px;">
+    <h2>Add item</h2>
+    <div id="add-item-error" class="error hidden"></div>
+    <label>Item name</label><input id="ai-name" placeholder="e.g. Cash wrap counter">
+    <label>Quantity</label><input id="ai-quantity" type="number" value="1" min="1">
+
+    <div style="margin-top:14px; border-top:1px solid var(--border); padding-top:12px;">
+      <div class="row"><strong style="font-size:13px;">Components</strong></div>
+      <div id="component-chips"></div>
+
+      <div style="margin-top:10px;">
+        <label>Typology</label>
+        <select id="ai-typology" onchange="renderTypologyForm()"></select>
+        <div id="typology-fields" style="margin-top:6px;"></div>
+        <button class="secondary" style="margin-top:10px;" onclick="addComponentToItem()">+ Add component to item</button>
+      </div>
+    </div>
+
+    <div class="footer-actions">
+      <button class="secondary" onclick="closeModal('modal-add-item')">Cancel</button>
+      <button id="save-item-btn" onclick="submitItem()" disabled>Save item</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Material form -->
+<div id="modal-material" class="modal-overlay hidden">
+  <div class="modal">
+    <h2 id="material-modal-title">Add material</h2>
+    <div id="material-error" class="error hidden"></div>
+    <input type="hidden" id="mat-id">
+    <label>Category</label><input id="mat-category" placeholder="e.g. Panel & Sheet Materials">
+    <label>Description</label><input id="mat-name">
+    <label>Supplied as</label><input id="mat-supplied-as" placeholder="Sheet / Roll / Unit / Litre">
+    <div class="grid3">
+      <div><label>Length (mm)</label><input id="mat-length" type="number"></div>
+      <div><label>Width (mm)</label><input id="mat-width" type="number"></div>
+      <div><label>Thickness (mm)</label><input id="mat-thickness" type="number"></div>
+    </div>
+    <label>Cost as supplied (ZAR, excl VAT)</label><input id="mat-cost" type="number" step="0.01">
+    <div class="footer-actions">
+      <button class="secondary" onclick="closeModal('modal-material')">Cancel</button>
+      <button onclick="submitMaterial()">Save material</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Outputs (cost analysis / cutting list) -->
+<div id="modal-outputs" class="modal-overlay hidden">
+  <div class="modal" style="max-width:640px; max-height:80vh; overflow:auto;">
+    <h2 id="outputs-title">Output</h2>
+    <div id="outputs-body"></div>
+    <div class="footer-actions">
+      <button class="secondary" onclick="closeModal('modal-outputs')">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '/api';
+let token = localStorage.getItem('sfc_token') || null;
+let authMode = 'login';
+let materials = [];
+let currentProject = null;
+let pendingComponents = [];
+
+const TYPOLOGY_FIELDS = {
+  horizontal_box: { label: 'Horizontal box (counter, desk, bench)', fields: [
+    {key:'length_mm', label:'Length (mm)', type:'number'},
+    {key:'height_mm', label:'Height (mm)', type:'number'},
+    {key:'depth_mm', label:'Depth (mm)', type:'number'},
+    {key:'board_material', label:'Board material', type:'material'},
+    {key:'separate_top', label:'Separate top?', type:'bool', affects:true},
+    {key:'drawers', label:'Number of drawers', type:'number', default:0, affects:true},
+    {key:'edging_material', label:'Edging material', type:'material'},
+    {key:'drawer_hardware_material', label:'Drawer hardware', type:'material', showIf: v => Number(v.drawers||0) > 0},
+  ]},
+  vertical_box: { label: 'Vertical box (cabinet, tower, locker)', fields: [
+    {key:'width_mm', label:'Width (mm)', type:'number'},
+    {key:'height_mm', label:'Height (mm)', type:'number'},
+    {key:'depth_mm', label:'Depth (mm)', type:'number'},
+    {key:'board_material', label:'Board material', type:'material'},
+    {key:'shelves', label:'Number of shelves', type:'number', default:0},
+    {key:'doors', label:'Enclosure doors?', type:'bool', affects:true},
+    {key:'edging_material', label:'Edging material', type:'material'},
+    {key:'hinge_hardware_material', label:'Hinge hardware', type:'material', showIf: v => v.doors},
+  ]},
+  flat_framework: { label: 'Flat framework (rail, trolley, frame)', fields: [
+    {key:'width_mm', label:'Width (mm)', type:'number'},
+    {key:'height_mm', label:'Height (mm)', type:'number'},
+    {key:'depth_mm', label:'Depth (mm)', type:'number'},
+    {key:'profile_material', label:'Profile material', type:'material'},
+    {key:'finishing_material', label:'Finishing material (coating)', type:'material'},
+    {key:'cross_rails', label:'Internal cross-rails', type:'number', default:0},
+    {key:'wheels', label:'Mobile wheels?', type:'bool', affects:true},
+    {key:'wheel_kit_material', label:'Wheel kit', type:'material', showIf: v => v.wheels},
+    {key:'leveling_feet_material', label:'Leveling feet', type:'material', showIf: v => !v.wheels},
+  ]},
+  area_cladding: { label: 'Area cladding (wall, ceiling panel)', fields: [
+    {key:'width_mm', label:'Width (mm)', type:'number'},
+    {key:'height_mm', label:'Height (mm)', type:'number'},
+    {key:'face_material', label:'Face material', type:'material'},
+    {key:'substructure_material', label:'Substructure material', type:'material'},
+    {key:'complexity_high', label:'High complexity?', type:'bool'},
+    {key:'perimeter_edging', label:'Perimeter edging?', type:'bool', affects:true},
+    {key:'edge_trim_material', label:'Edge trim material', type:'material', showIf: v => v.perimeter_edging},
+  ]},
+  framing_lines: { label: 'Framing lines (shopfront, glass partition)', fields: [
+    {key:'opening_width_mm', label:'Opening width (mm)', type:'number'},
+    {key:'opening_height_mm', label:'Opening height (mm)', type:'number'},
+    {key:'frame_material', label:'Frame material', type:'material'},
+    {key:'glass_material', label:'Glass material', type:'material'},
+    {key:'mid_mullions', label:'Mid-mullions', type:'number', default:0},
+    {key:'door_mechanism', label:'Door mechanism', type:'select', options:['none','manual','automatic'], default:'none', affects:true},
+    {key:'manual_door_kit_material', label:'Manual door kit', type:'material', showIf: v => v.door_mechanism === 'manual'},
+    {key:'automatic_door_kit_material', label:'Automatic door kit', type:'material', showIf: v => v.door_mechanism === 'automatic'},
+  ]},
+};
+
+let currentFieldValues = {};
+
+// ---------- API helper ----------
+async function api(path, opts = {}) {
+  const headers = opts.headers || {};
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  if (opts.body && !(opts.body instanceof URLSearchParams)) headers['Content-Type'] = 'application/json';
+  const res = await fetch(API + path, { ...opts, headers });
+  if (res.status === 401) { logout(); throw new Error('Session expired'); }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || 'Request failed');
+  return data;
+}
+
+// ---------- Auth ----------
+function toggleAuthMode() {
+  authMode = authMode === 'login' ? 'register' : 'login';
+  document.getElementById('auth-title').textContent = authMode === 'login' ? 'Log in' : 'Register';
+  document.getElementById('auth-submit').textContent = authMode === 'login' ? 'Log in' : 'Register';
+  document.getElementById('auth-toggle').textContent = authMode === 'login' ? 'Need an account? Register' : 'Have an account? Log in';
+  document.getElementById('auth-name-field').classList.toggle('hidden', authMode === 'login');
+}
+
+async function submitAuth() {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const errEl = document.getElementById('auth-error');
+  errEl.classList.add('hidden');
+  try {
+    if (authMode === 'register') {
+      await api('/auth/register', { method: 'POST', body: JSON.stringify({ email, password, full_name: document.getElementById('auth-name').value }) });
+    }
+    const form = new URLSearchParams({ username: email, password });
+    const res = await fetch(API + '/auth/login', { method: 'POST', body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Login failed');
+    token = data.access_token;
+    localStorage.setItem('sfc_token', token);
+    enterApp();
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.remove('hidden');
+  }
+}
+
+function logout() {
+  token = null;
+  localStorage.removeItem('sfc_token');
+  document.getElementById('nav').classList.add('hidden');
+  document.getElementById('screen-auth').classList.remove('hidden');
+  ['screen-dashboard','screen-project','screen-materials'].forEach(id => document.getElementById(id).classList.add('hidden'));
+}
+
+function enterApp() {
+  document.getElementById('screen-auth').classList.add('hidden');
+  document.getElementById('nav').classList.remove('hidden');
+  showDashboard();
+}
+
+// ---------- Modals ----------
+function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+// ---------- Dashboard ----------
+async function showDashboard() {
+  ['screen-project','screen-materials'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  document.getElementById('screen-dashboard').classList.remove('hidden');
+  const projects = await api('/projects/');
+  const list = document.getElementById('project-list');
+  list.innerHTML = projects.length ? '' : '<p class="muted">No projects yet. Create one to get started.</p>';
+  projects.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'list-row';
+    row.onclick = () => openProject(p.id);
+    row.innerHTML = `<span>${p.name}</span><span class="muted">${p.project_number || ''}</span>`;
+    list.appendChild(row);
+  });
+}
+
+async function submitNewProject() {
+  const errEl = document.getElementById('new-project-error');
+  errEl.classList.add('hidden');
+  try {
+    const payload = {
+      name: document.getElementById('np-name').value.trim(),
+      project_number: document.getElementById('np-number').value || null,
+      sponsor: document.getElementById('np-sponsor').value || null,
+      client_info: document.getElementById('np-client').value || null,
+      special_instructions: document.getElementById('np-instructions').value || null,
+    };
+    if (!payload.name) throw new Error('Project name is required');
+    const project = await api('/projects/', { method: 'POST', body: JSON.stringify(payload) });
+    closeModal('modal-new-project');
+    ['np-name','np-number','np-sponsor','np-client','np-instructions'].forEach(id => document.getElementById(id).value = '');
+    openProject(project.id);
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.remove('hidden');
+  }
+}
+
+// ---------- Project detail ----------
+async function openProject(id) {
+  currentProject = await api('/projects/' + id);
+  document.getElementById('screen-dashboard').classList.add('hidden');
+  document.getElementById('screen-materials').classList.add('hidden');
+  document.getElementById('screen-project').classList.remove('hidden');
+  document.getElementById('project-title').textContent = currentProject.name;
+  document.getElementById('project-meta').textContent = [currentProject.project_number, currentProject.sponsor].filter(Boolean).join(' · ');
+  await refreshItems();
+}
+
+async function refreshItems() {
+  const items = await api(`/projects/${currentProject.id}/items`);
+  const list = document.getElementById('item-list');
+  list.innerHTML = items.length ? '' : '<p class="muted">No items yet. Add one to start costing this project.</p>';
+  items.forEach(item => {
+    const row = document.createElement('div');
+    row.className = 'card';
+    const typologyBadges = item.components.map(c => `<span class="badge">${TYPOLOGY_FIELDS[c.typology]?.label.split(' (')[0] || c.typology}</span>`).join(' ');
+    const total = item.components.reduce((s, c) => s + c.total_cost, 0);
+    row.innerHTML = `
+      <div class="row">
+        <div><strong>${item.name}</strong> <span class="muted">&times;${item.quantity}</span><div style="margin-top:6px;">${typologyBadges}</div></div>
+        <div style="text-align:right;">
+          <div class="muted">Unit cost: R${total.toFixed(2)}</div>
+          <button class="secondary" style="margin-top:6px;" onclick="viewCuttingList(${item.id})">Cutting list</button>
+        </div>
+      </div>`;
+    list.appendChild(row);
+  });
+}
+
+// ---------- Add item ----------
+async function openAddItem() {
+  pendingComponents = [];
+  document.getElementById('ai-name').value = '';
+  document.getElementById('ai-quantity').value = 1;
+  document.getElementById('add-item-error').classList.add('hidden');
+  renderComponentChips();
+  const sel = document.getElementById('ai-typology');
+  sel.innerHTML = Object.entries(TYPOLOGY_FIELDS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
+  if (!materials.length) materials = await api('/materials/');
+  renderTypologyForm();
+  document.getElementById('save-item-btn').disabled = true;
+  openModal('modal-add-item');
+}
+
+function materialOptions() {
+  return materials.map(m => `<option value="${m.name}">${m.category} — ${m.name}</option>`).join('');
+}
+
+function renderTypologyForm() {
+  const typology = document.getElementById('ai-typology').value;
+  currentFieldValues = {};
+  const def = TYPOLOGY_FIELDS[typology];
+  def.fields.forEach(f => { if (f.default !== undefined) currentFieldValues[f.key] = f.default; });
+  renderFieldsContainer(def);
+}
+
+function renderFieldsContainer(def) {
+  const container = document.getElementById('typology-fields');
+  container.innerHTML = '';
+  def.fields.forEach(f => {
+    if (f.showIf && !f.showIf(currentFieldValues)) return;
+    const wrap = document.createElement('div');
+    let inputHtml = '';
+    if (f.type === 'number') {
+      inputHtml = `<input type="number" value="${currentFieldValues[f.key] ?? ''}" data-key="${f.key}" onchange="onFieldChange(this,'${f.type}')">`;
+    } else if (f.type === 'bool') {
+      inputHtml = `<select data-key="${f.key}" onchange="onFieldChange(this,'${f.type}')">
+        <option value="false" ${!currentFieldValues[f.key] ? 'selected' : ''}>No</option>
+        <option value="true" ${currentFieldValues[f.key] ? 'selected' : ''}>Yes</option></select>`;
+    } else if (f.type === 'select') {
+      inputHtml = `<select data-key="${f.key}" onchange="onFieldChange(this,'${f.type}')">${f.options.map(o => `<option value="${o}" ${currentFieldValues[f.key]===o?'selected':''}>${o}</option>`).join('')}</select>`;
+    } else if (f.type === 'material') {
+      inputHtml = `<select data-key="${f.key}" onchange="onFieldChange(this,'${f.type}')"><option value="">Select a material…</option>${materialOptions()}</select>`;
+    }
+    wrap.innerHTML = `<label>${f.label}</label>${inputHtml}`;
+    container.appendChild(wrap);
+  });
+}
+
+function onFieldChange(el, type) {
+  const key = el.dataset.key;
+  let value = el.value;
+  if (type === 'bool') value = value === 'true';
+  currentFieldValues[key] = value;
+  const typology = document.getElementById('ai-typology').value;
+  const def = TYPOLOGY_FIELDS[typology];
+  const field = def.fields.find(f => f.key === key);
+  if (field && field.affects) renderFieldsContainer(def); // re-render only when a conditional-controlling field changes
+}
+
+function renderComponentChips() {
+  const el = document.getElementById('component-chips');
+  el.innerHTML = pendingComponents.map((c, i) =>
+    `<div class="component-chip"><span>${c.name || TYPOLOGY_FIELDS[c.typology].label}</span><button class="secondary" style="padding:2px 8px;" onclick="removeComponent(${i})">Remove</button></div>`
+  ).join('');
+}
+
+function removeComponent(i) {
+  pendingComponents.splice(i, 1);
+  renderComponentChips();
+  document.getElementById('save-item-btn').disabled = pendingComponents.length === 0;
+}
+
+function addComponentToItem() {
+  const typology = document.getElementById('ai-typology').value;
+  const def = TYPOLOGY_FIELDS[typology];
+  const errEl = document.getElementById('add-item-error');
+  errEl.classList.add('hidden');
+  const inputs = {};
+  for (const f of def.fields) {
+    if (f.showIf && !f.showIf(currentFieldValues)) continue;
+    let v = currentFieldValues[f.key];
+    if (f.type === 'number') v = v === '' || v === undefined ? (f.default ?? 0) : Number(v);
+    if (f.type === 'material' && !v) { errEl.textContent = `"${f.label}" is required.`; errEl.classList.remove('hidden'); return; }
+    if ((f.type === 'number') && (v === undefined || v === null || Number.isNaN(v)) && !('default' in f)) { errEl.textContent = `"${f.label}" is required.`; errEl.classList.remove('hidden'); return; }
+    inputs[f.key] = v;
+  }
+  pendingComponents.push({ typology, name: def.label.split(' (')[0], inputs });
+  renderComponentChips();
+  document.getElementById('save-item-btn').disabled = false;
+}
+
+async function submitItem() {
+  const errEl = document.getElementById('add-item-error');
+  errEl.classList.add('hidden');
+  try {
+    const name = document.getElementById('ai-name').value.trim();
+    if (!name) throw new Error('Item name is required');
+    const payload = { name, quantity: Number(document.getElementById('ai-quantity').value) || 1, components: pendingComponents };
+    await api(`/projects/${currentProject.id}/items`, { method: 'POST', body: JSON.stringify(payload) });
+    closeModal('modal-add-item');
+    await refreshItems();
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.remove('hidden');
+  }
+}
+
+// ---------- Outputs ----------
+async function viewCostAnalysis() {
+  const data = await api(`/projects/${currentProject.id}/cost-analysis`);
+  document.getElementById('outputs-title').textContent = 'Cost analysis — ' + data.project_name;
+  const rows = data.items.map(i => `
+    <tr><td>${i.name} &times;${i.quantity}</td><td>R${i.unit_cost.toFixed(2)}</td><td>R${i.line_total.toFixed(2)}</td></tr>
+  `).join('');
+  document.getElementById('outputs-body').innerHTML = `
+    <table><thead><tr><th>Item</th><th>Unit cost</th><th>Line total</th></tr></thead><tbody>${rows}</tbody></table>
+    <p style="text-align:right; margin-top:10px;"><strong>Project total: R${data.project_total.toFixed(2)}</strong></p>
+    <p class="muted">Cost only — margin and VAT are applied separately when you turn this into a quotation.</p>`;
+  openModal('modal-outputs');
+}
+
+async function viewCuttingList(itemId) {
+  const data = await api(`/items/${itemId}/cutting-list`);
+  document.getElementById('outputs-title').textContent = 'Cutting list — ' + data.item_name;
+  let html = '';
+  data.components.forEach(comp => {
+    html += `<h3 style="font-size:14px; margin-bottom:6px;">${comp.component}</h3>`;
+    if (comp.error) { html += `<p class="error">${comp.error}</p>`; return; }
+    html += '<table><thead><tr><th>Panel</th><th>W x L (mm)</th><th>Qty</th><th>Orientation</th><th>Per sheet</th><th>Sheets</th></tr></thead><tbody>';
+    comp.rows.forEach(r => {
+      if (r.orientation) {
+        html += `<tr><td>${r.panel}</td><td>${r.width_mm} x ${r.length_mm}</td><td>${r.qty}</td><td>${r.orientation}</td><td>${r.fit_per_sheet}</td><td>${r.sheets_needed}</td></tr>`;
+      } else {
+        html += `<tr><td>${r.name}</td><td>${r.width_mm}${r.length_mm ? ' x ' + r.length_mm : ' (linear)'}</td><td>${r.qty}</td><td colspan="3" class="muted">Linear stock, cut to length</td></tr>`;
+      }
+    });
+    html += '</tbody></table>';
+  });
+  document.getElementById('outputs-body').innerHTML = html;
+  openModal('modal-outputs');
+}
+
+// ---------- Materials ----------
+async function showMaterials() {
+  ['screen-dashboard','screen-project'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  document.getElementById('screen-materials').classList.remove('hidden');
+  materials = await api('/materials/');
+  const body = document.getElementById('materials-table');
+  body.innerHTML = materials.map(m => `
+    <tr>
+      <td>${m.category}</td>
+      <td>${m.name}</td>
+      <td>R${m.cost.toFixed(2)}</td>
+      <td class="muted">${[m.length_mm, m.width_mm, m.thickness_mm].filter(Boolean).join(' x ') || '—'}</td>
+      <td><button class="secondary" onclick='openMaterialForm(${JSON.stringify(m).replace(/'/g, "&apos;")})'>Edit</button></td>
+    </tr>`).join('');
+}
+
+function openMaterialForm(material) {
+  document.getElementById('material-error').classList.add('hidden');
+  document.getElementById('material-modal-title').textContent = material ? 'Edit material' : 'Add material';
+  document.getElementById('mat-id').value = material ? material.id : '';
+  document.getElementById('mat-category').value = material ? material.category : '';
+  document.getElementById('mat-name').value = material ? material.name : '';
+  document.getElementById('mat-supplied-as').value = material ? (material.supplied_as || '') : '';
+  document.getElementById('mat-length').value = material ? (material.length_mm ?? '') : '';
+  document.getElementById('mat-width').value = material ? (material.width_mm ?? '') : '';
+  document.getElementById('mat-thickness').value = material ? (material.thickness_mm ?? '') : '';
+  document.getElementById('mat-cost').value = material ? material.cost : '';
+  openModal('modal-material');
+}
+
+async function submitMaterial() {
+  const errEl = document.getElementById('material-error');
+  errEl.classList.add('hidden');
+  try {
+    const id = document.getElementById('mat-id').value;
+    const payload = {
+      category: document.getElementById('mat-category').value.trim(),
+      name: document.getElementById('mat-name').value.trim(),
+      supplied_as: document.getElementById('mat-supplied-as').value || null,
+      length_mm: document.getElementById('mat-length').value ? Number(document.getElementById('mat-length').value) : null,
+      width_mm: document.getElementById('mat-width').value ? Number(document.getElementById('mat-width').value) : null,
+      thickness_mm: document.getElementById('mat-thickness').value ? Number(document.getElementById('mat-thickness').value) : null,
+      cost: Number(document.getElementById('mat-cost').value),
+    };
+    if (!payload.name || !payload.category) throw new Error('Category and description are required');
+    if (id) {
+      await api(`/materials/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+    } else {
+      await api('/materials/', { method: 'POST', body: JSON.stringify({ ...payload, unit: 'per_m2' }) });
+    }
+    closeModal('modal-material');
+    showMaterials();
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.remove('hidden');
+  }
+}
+
+// ---------- Boot ----------
+// HTML already renders in "log in" mode by default, so no initial toggle is needed.
+if (token) enterApp();
+</script>
+</body>
+</html>
