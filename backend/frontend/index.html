@@ -50,6 +50,7 @@
   <nav id="nav" class="hidden">
     <a onclick="showDashboard()">Projects</a>
     <a class="nav-primary" onclick="showMaterials()">Materials</a>
+    <a class="nav-primary" onclick="showSettings()">Settings</a>
     <a class="nav-logout" onclick="logout()">Log out</a>
   </nav>
 </header>
@@ -107,6 +108,16 @@
       <thead><tr><th>Category</th><th>Description</th><th>Cost (ZAR)</th><th>Dims (mm)</th><th></th></tr></thead>
       <tbody id="materials-table"></tbody>
     </table>
+  </div>
+
+  <!-- SETTINGS -->
+  <div id="screen-settings" class="hidden">
+    <div class="row" style="margin-bottom:14px;">
+      <h2>Settings</h2>
+    </div>
+    <p class="muted" style="margin-bottom:14px;">These numbers feed every cost and cutting-list calculation across the app. Compare estimates against real completed jobs and adjust here as you learn — no code change or redeploy needed.</p>
+    <div id="settings-error" class="error hidden"></div>
+    <div id="settings-list"></div>
   </div>
 
 </main>
@@ -309,7 +320,7 @@ function logout() {
   localStorage.removeItem('sfc_token');
   document.getElementById('nav').classList.add('hidden');
   document.getElementById('screen-auth').classList.remove('hidden');
-  ['screen-dashboard','screen-project','screen-materials'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  ['screen-dashboard','screen-project','screen-materials','screen-settings'].forEach(id => document.getElementById(id).classList.add('hidden'));
 }
 
 function enterApp() {
@@ -324,7 +335,7 @@ function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
 // ---------- Dashboard ----------
 async function showDashboard() {
-  ['screen-project','screen-materials'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  ['screen-project','screen-materials','screen-settings'].forEach(id => document.getElementById(id).classList.add('hidden'));
   document.getElementById('screen-dashboard').classList.remove('hidden');
   const projects = await api('/projects/');
   const list = document.getElementById('project-list');
@@ -363,8 +374,7 @@ async function submitNewProject() {
 // ---------- Project detail ----------
 async function openProject(id) {
   currentProject = await api('/projects/' + id);
-  document.getElementById('screen-dashboard').classList.add('hidden');
-  document.getElementById('screen-materials').classList.add('hidden');
+  ['screen-dashboard','screen-materials','screen-settings'].forEach(id => document.getElementById(id).classList.add('hidden'));
   document.getElementById('screen-project').classList.remove('hidden');
   document.getElementById('project-title').textContent = currentProject.name;
   document.getElementById('project-meta').textContent = [currentProject.project_number, currentProject.sponsor].filter(Boolean).join(' · ');
@@ -551,7 +561,7 @@ async function viewCuttingList(itemId) {
 
 // ---------- Materials ----------
 async function showMaterials() {
-  ['screen-dashboard','screen-project'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  ['screen-dashboard','screen-project','screen-settings'].forEach(id => document.getElementById(id).classList.add('hidden'));
   document.getElementById('screen-materials').classList.remove('hidden');
   materials = await api('/materials/');
   const body = document.getElementById('materials-table');
@@ -601,6 +611,58 @@ async function submitMaterial() {
     }
     closeModal('modal-material');
     showMaterials();
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.remove('hidden');
+  }
+}
+
+// ---------- Settings ----------
+const SETTING_LABELS = {
+  wastage_factor: { label: 'Wastage factor', hint: 'Multiplier applied to raw board area / linear length to allow for offcuts. 1.10 = 10% wastage.' },
+  kerf_mm: { label: 'Saw kerf (mm)', hint: 'Blade width allowance subtracted between panels when calculating how many fit per sheet in the cutting list.' },
+  consumables_pct: { label: 'Consumables markup (%)', hint: 'Flat percentage of material cost added to cover screws, glue, sealant, tape, sandpaper, etc.' },
+  labour_rate: { label: 'Labour rate (ZAR/hour)', hint: 'Reference only — stored alongside each component’s estimated hours, but no longer drives labour cost (see labour multiplier per item).' },
+};
+
+async function showSettings() {
+  ['screen-dashboard','screen-project','screen-materials'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  document.getElementById('screen-settings').classList.remove('hidden');
+  document.getElementById('settings-error').classList.add('hidden');
+  try {
+    const settings = await api('/settings/');
+    const list = document.getElementById('settings-list');
+    list.innerHTML = settings.map(s => {
+      const meta = SETTING_LABELS[s.key] || { label: s.key, hint: s.description || '' };
+      return `
+      <div class="card">
+        <div class="row" style="align-items:flex-start;">
+          <div style="max-width:520px;">
+            <strong>${meta.label}</strong>
+            <p class="muted" style="margin:4px 0 0;">${meta.hint}</p>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <input type="number" step="0.01" id="setting-${s.key}" value="${s.value}" style="width:120px;">
+            <button class="secondary" onclick="saveSetting('${s.key}')">Save</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    const errEl = document.getElementById('settings-error');
+    errEl.textContent = e.message;
+    errEl.classList.remove('hidden');
+  }
+}
+
+async function saveSetting(key) {
+  const errEl = document.getElementById('settings-error');
+  errEl.classList.add('hidden');
+  try {
+    const input = document.getElementById(`setting-${key}`);
+    const value = Number(input.value);
+    if (Number.isNaN(value)) throw new Error('Enter a valid number');
+    await api(`/settings/${key}`, { method: 'PATCH', body: JSON.stringify({ value }) });
   } catch (e) {
     errEl.textContent = e.message;
     errEl.classList.remove('hidden');

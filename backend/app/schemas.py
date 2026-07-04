@@ -60,6 +60,20 @@ class MaterialOut(MaterialCreate):
         from_attributes = True
 
 
+# --- Settings ---
+class SettingOut(BaseModel):
+    key: str
+    value: float
+    description: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class SettingUpdate(BaseModel):
+    value: float
+
+
 # --- Projects ---
 class ProjectCreate(BaseModel):
     name: str

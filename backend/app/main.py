@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
-from app.routers import auth, materials, projects, items
+from app.routers import auth, materials, projects, items, settings
 
 app = FastAPI(title="Shopfitting Costing App", version="1.0.0")
 
@@ -27,6 +27,7 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(materials.router, prefix="/api")
 app.include_router(projects.router, prefix="/api")
 app.include_router(items.router, prefix="/api")
+app.include_router(settings.router, prefix="/api")
 
 
 @app.get("/health")
