@@ -95,6 +95,8 @@ class Item(Base):
     name = Column(String(255), nullable=False)
     quantity = Column(Integer, nullable=False, default=1)
     drawing_filename = Column(String(500), nullable=True)  # reference/record only, v1
+    fixture_category = Column(String(50), nullable=True)  # "modular" / "standard_joinery" / "bespoke_premium" - reference label only
+    labour_multiplier = Column(Float, nullable=False, default=1.0)  # labour_cost = material_cost x this, per-item
     created_at = Column(DateTime(timezone=True), default=utcnow)
 
     project = relationship("Project", back_populates="items")

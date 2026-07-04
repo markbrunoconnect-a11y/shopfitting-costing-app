@@ -88,6 +88,8 @@ class ComponentCreate(BaseModel):
 class ItemCreate(BaseModel):
     name: str
     quantity: int = 1
+    fixture_category: Optional[str] = None
+    labour_multiplier: float = 1.0
     components: list[ComponentCreate]
 
 
@@ -113,6 +115,8 @@ class ItemOut(BaseModel):
     project_id: int
     name: str
     quantity: int
+    fixture_category: Optional[str]
+    labour_multiplier: float
     components: list[ComponentOut]
 
     class Config:

@@ -14,13 +14,18 @@ def _compute_and_build(db: Session, project_id: int, payload: schemas.ItemCreate
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    item = models.Item(project_id=project_id, name=payload.name, quantity=payload.quantity)
+    item = models.Item(
+        project_id=project_id, name=payload.name, quantity=payload.quantity,
+        fixture_category=payload.fixture_category, labour_multiplier=payload.labour_multiplier,
+    )
     db.add(item)
     db.flush()  # get item.id without committing yet
 
     for comp_payload in payload.components:
         try:
-            result = component_service.compute_component(db, comp_payload.typology, comp_payload.inputs)
+            result = component_service.compute_component(
+                db, comp_payload.typology, comp_payload.inputs, labour_multiplier=payload.labour_multiplier,
+            )
         except (KeyError, ValueError) as exc:
             db.rollback()
             missing = f"Missing input: {exc}" if isinstance(exc, KeyError) else str(exc)

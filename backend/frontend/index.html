@@ -132,6 +132,14 @@
     <div id="add-item-error" class="error hidden"></div>
     <label>Item name</label><input id="ai-name" placeholder="e.g. Cash wrap counter">
     <label>Quantity</label><input id="ai-quantity" type="number" value="1" min="1">
+    <label>Fixture category (sets labour multiplier)</label>
+    <select id="ai-fixture-category" onchange="onFixtureCategoryChange()">
+      <option value="modular" data-default="0.65">Category A: Modular (0.5x-0.8x) — racking, pegboards, flat-pack kits</option>
+      <option value="standard_joinery" data-default="1.0" selected>Category B: Standard Joinery (1.0x) — melamine/MDF counters, cabinets, cladding</option>
+      <option value="bespoke_premium" data-default="1.75">Category C: Bespoke/Premium (1.5x-2.0x) — solid surfaces, curved bulkheads, LED showcase joinery</option>
+    </select>
+    <label>Labour multiplier (editable — labour cost = material cost &times; this)</label>
+    <input id="ai-labour-multiplier" type="number" step="0.05" min="0" value="1.0">
 
     <div style="margin-top:14px; border-top:1px solid var(--border); padding-top:12px;">
       <div class="row"><strong style="font-size:13px;">Components</strong></div>
@@ -369,7 +377,7 @@ async function refreshItems() {
     const total = item.components.reduce((s, c) => s + c.total_cost, 0);
     row.innerHTML = `
       <div class="row">
-        <div><strong>${item.name}</strong> <span class="muted">&times;${item.quantity}</span><div style="margin-top:6px;">${typologyBadges}</div></div>
+        <div><strong>${item.name}</strong> <span class="muted">&times;${item.quantity} · labour &times;${item.labour_multiplier}</span><div style="margin-top:6px;">${typologyBadges}</div></div>
         <div style="text-align:right;">
           <div class="muted">Unit cost: R${total.toFixed(2)}</div>
           <button class="secondary" style="margin-top:6px;" onclick="viewCuttingList(${item.id})">Cutting list</button>
@@ -384,6 +392,8 @@ async function openAddItem() {
   pendingComponents = [];
   document.getElementById('ai-name').value = '';
   document.getElementById('ai-quantity').value = 1;
+  document.getElementById('ai-fixture-category').value = 'standard_joinery';
+  document.getElementById('ai-labour-multiplier').value = 1.0;
   document.getElementById('add-item-error').classList.add('hidden');
   renderComponentChips();
   const sel = document.getElementById('ai-typology');
@@ -392,6 +402,12 @@ async function openAddItem() {
   renderTypologyForm();
   document.getElementById('save-item-btn').disabled = true;
   openModal('modal-add-item');
+}
+
+function onFixtureCategoryChange() {
+  const sel = document.getElementById('ai-fixture-category');
+  const def = sel.options[sel.selectedIndex].dataset.default;
+  document.getElementById('ai-labour-multiplier').value = def;
 }
 
 function materialOptions() {
@@ -478,7 +494,12 @@ async function submitItem() {
   try {
     const name = document.getElementById('ai-name').value.trim();
     if (!name) throw new Error('Item name is required');
-    const payload = { name, quantity: Number(document.getElementById('ai-quantity').value) || 1, components: pendingComponents };
+    const payload = {
+      name, quantity: Number(document.getElementById('ai-quantity').value) || 1,
+      fixture_category: document.getElementById('ai-fixture-category').value,
+      labour_multiplier: Number(document.getElementById('ai-labour-multiplier').value) || 1.0,
+      components: pendingComponents,
+    };
     await api(`/projects/${currentProject.id}/items`, { method: 'POST', body: JSON.stringify(payload) });
     closeModal('modal-add-item');
     await refreshItems();

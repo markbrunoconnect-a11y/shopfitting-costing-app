@@ -21,20 +21,29 @@ def _get_setting(db: Session, key: str, default: float) -> float:
     return setting.value if setting else default
 
 
-def _apply_consumables(db: Session, result: typologies.TypologyResult) -> typologies.TypologyResult:
-    """Adds a flat consumables markup (screws, glue, sealant, tape, sandpaper,
-    etc.) as a percentage of material cost. These items aren't individually
-    priced anywhere in the typology engines, so this is a blanket allowance
-    rather than a measured quantity - editable via Settings, same as
-    labour_rate/wastage_factor, and intended to be recalibrated against real
-    jobs rather than trusted as-is."""
+def _finalize_costs(db: Session, result: typologies.TypologyResult, labour_multiplier: float) -> typologies.TypologyResult:
+    """Overrides each typology function's internal hours x labour_rate labour
+    cost with material_cost x labour_multiplier (per Mark's decision: labour
+    is priced off a fixture-complexity multiplier on material cost - Modular
+    ~0.5-0.8x, Standard Joinery 1.0x, Bespoke/Premium ~1.5-2.0x - rather than
+    estimated build hours, since real per-typology timing data isn't
+    available yet). labour_hours is kept on the result as an informational
+    reference only; it no longer drives cost.
+
+    Also adds a flat consumables markup (screws, glue, sealant, tape,
+    sandpaper, etc.) as a percentage of material cost - these items aren't
+    individually priced anywhere in the typology engines, so this is a
+    blanket allowance rather than a measured quantity, editable via Settings
+    same as wastage_factor.
+    """
     consumables_pct = _get_setting(db, "consumables_pct", 5.0)
+    result.labour_cost = round(result.material_cost * labour_multiplier, 2)
     result.consumables_cost = round(result.material_cost * consumables_pct / 100, 2)
-    result.total_cost = round(result.total_cost + result.consumables_cost, 2)
+    result.total_cost = round(result.material_cost + result.labour_cost + result.consumables_cost, 2)
     return result
 
 
-def compute_component(db: Session, typology: models.Typology, inputs: dict) -> typologies.TypologyResult:
+def compute_component(db: Session, typology: models.Typology, inputs: dict, labour_multiplier: float = 1.0) -> typologies.TypologyResult:
     labour_rate = _get_setting(db, "labour_rate", 350.0)
     wastage = _get_setting(db, "wastage_factor", 1.10)
 
@@ -51,7 +60,7 @@ def compute_component(db: Session, typology: models.Typology, inputs: dict) -> t
             board_rate_per_m2=pricing.rate_per_m2(board), edging_rate_per_m=pricing.rate_per_lm(edging),
             drawer_hardware_cost_each=drawer_cost, labour_rate=labour_rate, wastage=wastage,
         )
-        return _apply_consumables(db, result)
+        return _finalize_costs(db, result, labour_multiplier)
 
     if typology == models.Typology.vertical_box:
         board = _get_material(db, inputs["board_material"])
@@ -66,7 +75,7 @@ def compute_component(db: Session, typology: models.Typology, inputs: dict) -> t
             board_rate_per_m2=pricing.rate_per_m2(board), edging_rate_per_m=pricing.rate_per_lm(edging),
             hinge_hardware_cost=hinge_cost, labour_rate=labour_rate, wastage=wastage,
         )
-        return _apply_consumables(db, result)
+        return _finalize_costs(db, result, labour_multiplier)
 
     if typology == models.Typology.flat_framework:
         profile = _get_material(db, inputs["profile_material"])
@@ -80,7 +89,7 @@ def compute_component(db: Session, typology: models.Typology, inputs: dict) -> t
             profile_rate_per_m=pricing.rate_per_lm(profile), finishing_rate_per_m=pricing.rate_per_lm(finishing),
             wheel_kit_cost=wheel_kit_cost, leveling_feet_cost=leveling_cost, labour_rate=labour_rate, wastage=wastage,
         )
-        return _apply_consumables(db, result)
+        return _finalize_costs(db, result, labour_multiplier)
 
     if typology == models.Typology.area_cladding:
         face = _get_material(db, inputs["face_material"])
@@ -95,7 +104,7 @@ def compute_component(db: Session, typology: models.Typology, inputs: dict) -> t
             face_rate_per_m2=pricing.rate_per_m2(face), substructure_rate_per_m2=pricing.rate_per_m2(substructure),
             edge_trim_rate_per_m=edge_trim_rate, labour_rate=labour_rate, wastage=wastage,
         )
-        return _apply_consumables(db, result)
+        return _finalize_costs(db, result, labour_multiplier)
 
     if typology == models.Typology.framing_lines:
         frame = _get_material(db, inputs["frame_material"])
@@ -109,6 +118,6 @@ def compute_component(db: Session, typology: models.Typology, inputs: dict) -> t
             frame_rate_per_m=pricing.rate_per_lm(frame), glass_rate_per_m2=pricing.rate_per_m2(glass),
             manual_door_kit_cost=manual_cost, automatic_door_kit_cost=auto_cost, labour_rate=labour_rate, wastage=wastage,
         )
-        return _apply_consumables(db, result)
+        return _finalize_costs(db, result, labour_multiplier)
 
     raise ValueError(f"Unknown typology: {typology}")
