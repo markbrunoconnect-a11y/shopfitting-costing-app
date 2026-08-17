@@ -90,6 +90,7 @@
     <div class="row" style="margin:10px 0 4px;">
       <h2 id="project-title"></h2>
       <div style="display:flex; gap:8px;">
+        <button class="secondary" onclick="openEditProject()">Edit details</button>
         <button class="secondary" onclick="viewCostAnalysis()">Cost analysis</button>
         <button onclick="openAddItem()">+ Add item to project</button>
       </div>
@@ -132,7 +133,11 @@
       <div><label>Project number</label><input id="np-number"></div>
       <div><label>Sponsor</label><input id="np-sponsor"></div>
     </div>
-    <label>Client info</label><textarea id="np-client" rows="2"></textarea>
+    <div class="grid2">
+      <div><label>Client name</label><input id="np-client-name" placeholder="e.g. Sanjo Construction"></div>
+      <div><label>Location</label><input id="np-location" placeholder="e.g. Sandton, JHB"></div>
+    </div>
+    <label>Client info</label><textarea id="np-client" rows="2" placeholder="Notes, contact person, etc."></textarea>
     <label>Special instructions</label><textarea id="np-instructions" rows="2"></textarea>
     <div class="footer-actions">
       <button class="secondary" onclick="closeModal('modal-new-project')">Cancel</button>
@@ -172,6 +177,26 @@
     <div class="footer-actions">
       <button class="secondary" onclick="closeModal('modal-add-item')">Cancel</button>
       <button id="save-item-btn" onclick="submitItem()" disabled>Save item</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Edit project details -->
+<div id="modal-edit-project" class="modal-overlay hidden">
+  <div class="modal">
+    <h2>Edit project details</h2>
+    <div id="edit-project-error" class="error hidden"></div>
+    <label>Client name</label><input id="ep-client-name" placeholder="e.g. Sanjo Construction">
+    <label>Location</label><input id="ep-location" placeholder="e.g. Sandton, JHB">
+    <label>Status</label>
+    <select id="ep-status">
+      <option value="active">Active</option>
+      <option value="completed">Completed</option>
+      <option value="archived">Archived</option>
+    </select>
+    <div class="footer-actions">
+      <button class="secondary" onclick="closeModal('modal-edit-project')">Cancel</button>
+      <button onclick="saveProjectDetails()">Save</button>
     </div>
   </div>
 </div>
@@ -344,7 +369,8 @@ async function showDashboard() {
     const row = document.createElement('div');
     row.className = 'list-row';
     row.onclick = () => openProject(p.id);
-    row.innerHTML = `<span>${p.name}</span><span class="muted">${p.project_number || ''}</span>`;
+    const sub = [p.client_name, p.location].filter(Boolean).join(' · ') || (p.project_number || '');
+    row.innerHTML = `<span>${p.name}</span><span class="muted">${sub}</span>`;
     list.appendChild(row);
   });
 }
@@ -357,13 +383,15 @@ async function submitNewProject() {
       name: document.getElementById('np-name').value.trim(),
       project_number: document.getElementById('np-number').value || null,
       sponsor: document.getElementById('np-sponsor').value || null,
+      client_name: document.getElementById('np-client-name').value || null,
+      location: document.getElementById('np-location').value || null,
       client_info: document.getElementById('np-client').value || null,
       special_instructions: document.getElementById('np-instructions').value || null,
     };
     if (!payload.name) throw new Error('Project name is required');
     const project = await api('/projects/', { method: 'POST', body: JSON.stringify(payload) });
     closeModal('modal-new-project');
-    ['np-name','np-number','np-sponsor','np-client','np-instructions'].forEach(id => document.getElementById(id).value = '');
+    ['np-name','np-number','np-sponsor','np-client-name','np-location','np-client','np-instructions'].forEach(id => document.getElementById(id).value = '');
     openProject(project.id);
   } catch (e) {
     errEl.textContent = e.message;
@@ -377,8 +405,41 @@ async function openProject(id) {
   ['screen-dashboard','screen-materials','screen-settings'].forEach(id => document.getElementById(id).classList.add('hidden'));
   document.getElementById('screen-project').classList.remove('hidden');
   document.getElementById('project-title').textContent = currentProject.name;
-  document.getElementById('project-meta').textContent = [currentProject.project_number, currentProject.sponsor].filter(Boolean).join(' · ');
+  document.getElementById('project-meta').textContent = [
+    currentProject.project_number, currentProject.sponsor,
+    currentProject.client_name, currentProject.location, currentProject.status,
+  ].filter(Boolean).join(' · ');
   await refreshItems();
+}
+
+// ---------- Edit project details ----------
+function openEditProject() {
+  document.getElementById('edit-project-error').classList.add('hidden');
+  document.getElementById('ep-client-name').value = currentProject.client_name || '';
+  document.getElementById('ep-location').value = currentProject.location || '';
+  document.getElementById('ep-status').value = currentProject.status || 'active';
+  openModal('modal-edit-project');
+}
+
+async function saveProjectDetails() {
+  const errEl = document.getElementById('edit-project-error');
+  errEl.classList.add('hidden');
+  try {
+    const payload = {
+      client_name: document.getElementById('ep-client-name').value || null,
+      location: document.getElementById('ep-location').value || null,
+      status: document.getElementById('ep-status').value,
+    };
+    currentProject = await api(`/projects/${currentProject.id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+    closeModal('modal-edit-project');
+    document.getElementById('project-meta').textContent = [
+      currentProject.project_number, currentProject.sponsor,
+      currentProject.client_name, currentProject.location, currentProject.status,
+    ].filter(Boolean).join(' · ');
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.remove('hidden');
+  }
 }
 
 async function refreshItems() {

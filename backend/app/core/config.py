@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     secret_key: str = os.getenv("SECRET_KEY", "dev-secret-change-me")
     access_token_expire_minutes: int = 60 * 24 * 7  # 7 days
     algorithm: str = "HS256"
+    # Separate shared-secret header key for the cross-company Amalgamator's
+    # read-only status report - never a real user login, see
+    # core/security.require_amalgamator_key.
+    amalgamator_api_key: str = os.getenv("AMALGAMATOR_API_KEY", "")
 
 
 settings = Settings()

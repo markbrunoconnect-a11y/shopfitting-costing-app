@@ -1,5 +1,6 @@
 """Password hashing and JWT helpers."""
 from datetime import datetime, timedelta, timezone
+from fastapi import Header, HTTPException
 from passlib.context import CryptContext
 from jose import jwt
 
@@ -28,3 +29,16 @@ def decode_access_token(token: str) -> str | None:
         return payload.get("sub")
     except jwt.JWTError:
         return None
+
+
+def require_amalgamator_key(x_amalgamator_key: str = Header(default=None)):
+    """
+    Gate for the read-only Amalgamator status-report endpoint - a completely
+    separate shared-secret header, never a user login/JWT. See
+    routers/amalgamator.py.
+    """
+    if not settings.amalgamator_api_key:
+        raise HTTPException(status_code=503, detail="Amalgamator access is not configured on this app yet")
+    if x_amalgamator_key != settings.amalgamator_api_key:
+        raise HTTPException(status_code=401, detail="Invalid or missing Amalgamator API key")
+    return True

@@ -79,6 +79,23 @@ class Project(Base):
     project_number = Column(String(100), nullable=True)
     sponsor = Column(String(255), nullable=True)
     client_info = Column(Text, nullable=True)
+    # Structured client name, added alongside the existing free-text
+    # client_info field rather than replacing it - client_info stays for
+    # contact-person/notes-style free text, while this field is what gets
+    # matched against other apps' projects (by client + location) for the
+    # cross-company Amalgamator report (see routers/amalgamator.py).
+    # Nullable: existing projects won't have this until backfilled.
+    client_name = Column(String(255), nullable=True)
+    # Site/location - this app had no location concept at all before the
+    # Amalgamator integration. Nullable for the same backfill reason.
+    location = Column(String(300), nullable=True)
+    # This app had no project lifecycle/status concept at all before the
+    # Amalgamator integration - projects were just costing worksheets with
+    # no notion of "done". Added so Mark can mark a project completed or
+    # archived, and so the Amalgamator report has something real to show
+    # instead of guessing. Defaults to "active" so existing projects don't
+    # need a backfill for this one. Values: active / completed / archived.
+    status = Column(String(50), nullable=False, default="active", server_default="active")
     expected_delivery_date = Column(DateTime(timezone=True), nullable=True)
     special_instructions = Column(Text, nullable=True)
     created_by = Column(Integer, ForeignKey("sfc_users.id"), nullable=True)

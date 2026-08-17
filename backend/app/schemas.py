@@ -80,6 +80,21 @@ class ProjectCreate(BaseModel):
     project_number: Optional[str] = None
     sponsor: Optional[str] = None
     client_info: Optional[str] = None
+    client_name: Optional[str] = None
+    location: Optional[str] = None
+    status: str = "active"
+    expected_delivery_date: Optional[datetime] = None
+    special_instructions: Optional[str] = None
+
+
+class ProjectUpdate(BaseModel):
+    name: Optional[str] = None
+    project_number: Optional[str] = None
+    sponsor: Optional[str] = None
+    client_info: Optional[str] = None
+    client_name: Optional[str] = None
+    location: Optional[str] = None
+    status: Optional[str] = None
     expected_delivery_date: Optional[datetime] = None
     special_instructions: Optional[str] = None
 
